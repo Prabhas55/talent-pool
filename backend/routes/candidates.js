@@ -12,7 +12,12 @@ router.get('/', async (req, res) => {
 
   let query = supabase.from('candidates').select('*');
 
-  if (skill) query = query.contains('skills', [skill]);
+  if (skill) {
+    // Case insensitive skill search using ilike on array
+    query = query.filter(
+      'skills', 'cs', `{${skill.toLowerCase()}}`
+    );
+  }
   if (min_exp) query = query.gte('years_experience', parseFloat(min_exp));
   if (location) query = query.ilike('location', `%${location}%`);
 
