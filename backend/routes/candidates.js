@@ -10,20 +10,27 @@ const supabase = createClient(
 router.get('/', async (req, res) => {
   const { skill, min_exp, location } = req.query;
 
+  // Get all candidates first
   let query = supabase.from('candidates').select('*');
 
-  if (skill) {
-    // Case insensitive skill search using ilike on array
-    query = query.filter(
-      'skills', 'cs', `{${skill.toLowerCase()}}`
-    );
-  }
   if (min_exp) query = query.gte('years_experience', parseFloat(min_exp));
   if (location) query = query.ilike('location', `%${location}%`);
 
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  // Filter by skill in JavaScript (case insensitive)
+  let result = data;
+  if (skill) {
+    const skillLower = skill.toLowerCase();
+    result = data.filter(candidate =>
+      (candidate.skills || []).some(s =>
+        s.toLowerCase().includes(skillLower)
+      )
+    );
+  }
+
+  res.json(result);
 });
 
 router.get('/:id', async (req, res) => {
