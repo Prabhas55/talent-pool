@@ -1,0 +1,9 @@
+backend/node_modules
+backend/.env
+backend/test-resumes
+backend/test-resumes-pdf
+backend/generateResumes.js
+backend/convertToPDF.js
+backend/convertToPDF2.js
+frontend/node_modules
+frontend/dist
