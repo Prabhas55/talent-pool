@@ -43,9 +43,20 @@ const upload = multer({
 
 router.post('/', upload.array('resumes', 30), async (req, res) => {
   const results = [];
-
   for (const file of req.files) {
     try {
+      // Check for duplicate filename
+      const { data: existing } = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('filename', file.originalname)
+        .single();
+
+      if (existing) {
+        results.push({ file: file.originalname, status: 'error', error: 'Resume already uploaded' });
+        continue;
+      }
+
       // Get file buffer from S3
       const command = new GetObjectCommand({
         Bucket: process.env.S3_BUCKET,
@@ -86,7 +97,6 @@ router.post('/', upload.array('resumes', 30), async (req, res) => {
       results.push({ file: file.originalname, status: 'error', error: err.message });
     }
   }
-
   res.json({ results });
 });
 
