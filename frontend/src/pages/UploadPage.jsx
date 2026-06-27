@@ -49,10 +49,12 @@ export default function UploadPage() {
 
   return (
     <div style={{ padding: 40, maxWidth: 600, margin: '0 auto' }}>
-      <h1 style={{ marginBottom: 8 }}>Upload Resumes</h1>
-      <p style={{ color: '#64748b', marginBottom: 24 }}>
-        Upload PDF or Word resumes. PII will be scrubbed before AI processing.
-      </p>
+     <h1 style={{ marginBottom: 16, fontSize: 32, fontWeight: 'bold', lineHeight: 1.2 }}>
+  Upload Resumes
+</h1>
+<p style={{ color: '#64748b', marginBottom: 24, marginTop: 0, lineHeight: 1.6 }}>
+  Upload PDF or Word resumes. PII will be scrubbed before AI processing.
+</p>
 
       <div style={{
         border: '2px dashed #cbd5e1',
