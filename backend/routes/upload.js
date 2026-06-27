@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
-const multerS3 = require('multer-s3');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { createClient } = require('@supabase/supabase-js');
 const { extractText } = require('../utils/extractText');
 const { extractPII } = require('../utils/extractPII');
@@ -23,12 +22,7 @@ const supabase = createClient(
 );
 
 const upload = multer({
-  storage: multerS3({
-    s3,
-    bucket: process.env.S3_BUCKET,
-    metadata: (req, file, cb) => cb(null, { fieldName: file.fieldname }),
-    key: (req, file, cb) => cb(null, `resumes/${Date.now()}-${file.originalname}`),
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = [
@@ -43,35 +37,34 @@ const upload = multer({
 
 router.post('/', upload.array('resumes', 30), async (req, res) => {
   const results = [];
+
   for (const file of req.files) {
     try {
       // Check for duplicate filename
-      const { data: existing } = await supabase
+      const { data: existingList } = await supabase
         .from('candidates')
         .select('id')
-        .eq('filename', file.originalname)
-        .single();
+        .eq('filename', file.originalname);
 
-      if (existing) {
-        results.push({ file: file.originalname, status: 'error', error: 'Resume already uploaded' });
+      if (existingList && existingList.length > 0) {
+        results.push({
+          file: file.originalname,
+          status: 'error',
+          error: 'Resume already uploaded'
+        });
         continue;
       }
 
-      // Get file buffer from S3
-      const command = new GetObjectCommand({
+      // Upload to S3
+      const s3Key = `resumes/${Date.now()}-${file.originalname}`;
+      await s3.send(new PutObjectCommand({
         Bucket: process.env.S3_BUCKET,
-        Key: file.key,
-      });
-      const s3Response = await s3.send(command);
+        Key: s3Key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      }));
 
-      // Convert stream to buffer
-      const chunks = [];
-      for await (const chunk of s3Response.Body) {
-        chunks.push(chunk);
-      }
-      const buffer = Buffer.concat(chunks);
-
-      const rawText = await extractText(buffer, file.mimetype);
+      const rawText = await extractText(file.buffer, file.mimetype);
       const pii = extractPII(rawText);
       const scrubbed = scrubPII(rawText);
       const aiData = await extractWithAI(scrubbed);
@@ -93,10 +86,16 @@ router.post('/', upload.array('resumes', 30), async (req, res) => {
 
       if (error) throw error;
       results.push({ file: file.originalname, status: 'success' });
+
     } catch (err) {
-      results.push({ file: file.originalname, status: 'error', error: err.message });
+      results.push({
+        file: file.originalname,
+        status: 'error',
+        error: err.message
+      });
     }
   }
+
   res.json({ results });
 });
 
