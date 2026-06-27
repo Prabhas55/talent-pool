@@ -3,7 +3,7 @@
 A web app that lets recruiters upload resumes, automatically extract candidate information using AI, and search/filter their talent pool.
 
 ## Live URL
-http://54.173.103.36
+http://44.203.158.112/
 
 ## GitHub Repo
 https://github.com/Prabhas55/talent-pool
